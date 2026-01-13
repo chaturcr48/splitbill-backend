@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import SessionLocal
 from app.models.group import Group
 from app.models.group_member import GroupMember
@@ -37,51 +37,26 @@ def create_group(
 
     return new_group
 
-# @router.get("")
-# def my_groups(
-#     current_user = Depends(get_current_user),
-#     db: Session = Depends(get_db)
-# ):
-#     groups = (
-#         db.query(Group)
-#         .join(GroupMember)
-#         .filter(GroupMember.user_id == current_user.id)
-#         .all()
-#     )
-#     return groups
 
 @router.get("")
 def my_groups(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    member_counts_subquery = (
-        db.query(
-            GroupMember.group_id, 
-            func.count(GroupMember.user_id).label("total_members")
-        )
-        .group_by(GroupMember.group_id)
-        .subquery()
-    )
+    # Fetch groups where the current user is a member
+    # We use joinedload to eagerly load the members list for efficiency
 
     results = (
-        db.query(Group, member_counts_subquery.c.total_members)
-        .join(GroupMember, Group.id == GroupMember.group_id)
-        .outerjoin(member_counts_subquery, Group.id == member_counts_subquery.c.group_id)
+        db.query(Group)
+        .join(GroupMember)
         .filter(GroupMember.user_id == current_user.id)
+        .options(joinedload(Group.members)) # This ensures 'members' is a list
         .all()
     )
 
-    return [
-        {
-            "id": group.id,
-            "name": group.name,
-            "created_by": group.created_by,
-            "created_at": group.created_at,
-            "total_members": total_members or 0 
-        } 
-        for group, total_members in results
-    ]
+    # results is now a list of Group objects
+    # SQLAlchemy will automatically handle the conversion to JSON via FastAPI
+    return results
 
 
 @router.post("/{group_id}/invite")
