@@ -9,6 +9,7 @@ from app.schemas.group import GroupCreate, GroupResponse
 from app.utils.dependencies import get_current_user
 from app.services.email_service import send_invitation_email
 from app.schemas.invitation import InviteUserRequest
+from typing import List
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
@@ -38,24 +39,20 @@ def create_group(
     return new_group
 
 
-@router.get("")
+@router.get("", response_model=List[GroupResponse])
 def my_groups(
-    current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    # Fetch groups where the current user is a member
-    # We use joinedload to eagerly load the members list for efficiency
-
+        current_user = Depends(get_current_user), 
+        db: Session = Depends(get_db)
+    ):
     results = (
         db.query(Group)
         .join(GroupMember)
         .filter(GroupMember.user_id == current_user.id)
-        .options(joinedload(Group.members)) # This ensures 'members' is a list
+        .options(
+            joinedload(Group.members).joinedload(GroupMember.user)
+        )
         .all()
     )
-
-    # results is now a list of Group objects
-    # SQLAlchemy will automatically handle the conversion to JSON via FastAPI
     return results
 
 

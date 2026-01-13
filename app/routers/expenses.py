@@ -42,9 +42,9 @@ def get_expenses(
         
         query = query.filter(Expense.group_id == group_id)
     else:
-        user_group_ids = db.query(GroupMember.group_id).filter(
+        user_group_ids = select(GroupMember.group_id).where(
             GroupMember.user_id == current_user.id
-        ).subquery()
+        )
         
         query = query.filter(Expense.group_id.in_(user_group_ids))
     
