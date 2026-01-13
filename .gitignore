@@ -1,0 +1,11 @@
+.env
+
+# Standard way to ignore all pycache folders anywhere in the project
+**/__pycache__/
+*.py[cod]
+
+# Ignore the virtual environment folder
+venv/
+.venv/
+env/
+ENV/
